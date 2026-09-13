@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Администрирование чек-листа</title>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <style>
+        /* Стили полностью сохранены (без изменений) */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #f1f5f9;
+            color: #0f172a;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            padding: 28px 32px;
+            min-height: 90vh;
+        }
+        .section {
+            margin-bottom: 32px;
+            background: #f8fafc;
+            border-radius: 14px;
+            padding: 20px 24px;
+            border: 1px solid #eef2f6;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .section-title .badge {
+            font-size: 12px;
+            font-weight: 500;
+            background: #e2e8f0;
+            color: #475569;
+            padding: 2px 12px;
+            border-radius: 20px;
+        }
+        .form-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px 24px;
+            align-items: end;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1 1 180px;
+            min-width: 140px;
+        }
+        .form-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #475569;
+        }
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            padding: 8px 12px;
+            border: 1.5px solid #d1d9e6;
+            border-radius: 8px;
+            background: #fff;
+            transition: 0.2s;
+            font-size: 14px;
+            width: 100%;
+        }
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 52px;
+            line-height: 1.5;
+        }
+        .version-input {
+            -moz-appearance: textfield;
+            appearance: textfield;
+        }
+        .version-input::-webkit-outer-spin-button,
+        .version-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .version-prefix {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .version-prefix span {
+            font-size: 18px;
+            font-weight: 700;
+            padding-right: 4px;
+        }
+        .version-prefix input {
+            width: 52px;
+            text-align: center;
+        }
+        .version-prefix input:first-of-type {
+            width: 44px;
+        }
+        .version-prefix .dot {
+            font-weight: 700;
+            color: #94a3b8;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 18px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            transition: 0.2s;
+            background: #e2e8f0;
+            color: #1e293b;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background: #cbd5e1;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        .btn-success {
+            background: #22c55e;
+            color: #fff;
+        }
+        .btn-success:hover {
+            background: #16a34a;
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1.5px solid #d1d9e6;
+            color: #475569;
+        }
+        .btn-outline:hover {
+            background: #f1f5f9;
+        }
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+        .btn-xs {
+            padding: 2px 10px;
+            font-size: 11px;
+            border-radius: 6px;
+        }
+        .criteria-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .criterion-card {
+            background: #fff;
+            border-radius: 12px;
+            border: 1px solid #eef2f6;
+            padding: 16px 20px;
+        }
+        .criterion-card .head {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .criterion-card .head .name-input {
+            flex: 1;
+            min-width: 160px;
+            padding: 6px 12px;
+            border: 1.5px solid #d1d9e6;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            background: #fafbfc;
+        }
+        .criterion-card .head .name-input:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        .criterion-card .head .actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .criterion-card .body {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 24px;
+        }
+        .criterion-card .body .attach-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex: 1;
+            min-width: 160px;
+        }
+        .criterion-card .body .attach-section .label-sm {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+        }
+        .criterion-card .body .attach-section .items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+        .criterion-card .body .attach-section .items .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            background: #f1f5f9;
+            padding: 2px 10px 2px 8px;
+            border-radius: 16px;
+            color: #1e293b;
+            max-width: 220px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .criterion-card .body .attach-section .items .tag .del {
+            cursor: pointer;
+            color: #94a3b8;
+            font-weight: 700;
+            margin-left: 2px;
+            font-size: 14px;
+        }
+        .criterion-card .body .attach-section .items .tag .del:hover {
+            color: #ef4444;
+        }
+        .criterion-card .body .attach-section .items .tag-link {
+            color: #2563eb;
+            background: #eff6ff;
+        }
+        .criterion-card .body .attach-section .add-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .criterion-card .body .attach-section .add-row input {
+            flex: 1;
+            min-width: 120px;
+            padding: 4px 10px;
+            border: 1.5px solid #d1d9e6;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .excel-zone {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            align-items: center;
+            margin-top: 4px;
+        }
+        .excel-zone .file-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .excel-zone .file-input-wrap input[type="file"] {
+            padding: 6px 0;
+            font-size: 13px;
+        }
+        .excel-zone .status {
+            font-size: 13px;
+            color: #475569;
+        }
+        .text-muted {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .mt-8 {
+            margin-top: 8px;
+        }
+        .flex-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        .json-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .json-actions .btn {
+            font-size: 13px;
+        }
+        .tab-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .history-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .history-table th {
+            text-align: left;
+            padding: 10px 8px;
+            background: #f1f5f9;
+            font-weight: 600;
+            border-bottom: 2px solid #d1d9e6;
+        }
+        .history-table td {
+            padding: 8px;
+            border-bottom: 1px solid #eef2f6;
+            cursor: pointer;
+        }
+        .history-table tr:hover td {
+            background: #f8fafc;
+        }
+        .history-table .empty {
+            text-align: center;
+            color: #94a3b8;
+            padding: 20px;
+        }
+        .history-detail {
+            margin-top: 16px;
+            padding: 16px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #d1d9e6;
+        }
+        .history-detail .item {
+            display: flex;
+            gap: 12px;
+            padding: 4px 0;
+            align-items: baseline;
+        }
+        .history-detail .item .mark {
+            width: 70px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+        .history-detail .item .name {
+            flex: 1;
+        }
+        .history-detail .item .comment {
+            color: #475569;
+            font-size: 13px;
+            font-style: italic;
+        }
+        .history-detail .close-btn {
+            margin-bottom: 12px;
+        }
+        @media (max-width: 700px) {
+            .app {
+                padding: 16px;
+            }
+            .section {
+                padding: 16px;
+            }
+            .form-row {
+                flex-direction: column;
+                gap: 12px;
+            }
+            .form-group {
+                flex: 1 1 auto;
+                width: 100%;
+            }
+            .criterion-card .head {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .history-table th,
+            .history-table td {
+                padding: 6px 4px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <h1 style="margin-bottom: 24px; font-size: 26px;">⚙️ Управление чек-листом</h1>
+
+        <div class="tab-bar">
+            <button class="btn btn-primary" id="tabSettings">⚙️ Настройки</button>
+            <button class="btn btn-outline" id="tabHistory">📜 История</button>
+        </div>
+
+        <!-- ====== ВКЛАДКА НАСТРОЙКИ ====== -->
+        <div id="settingsPanel">
+            <!-- Версия -->
+            <div class="section">
+                <div class="section-title">📌 Версия</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Версия (v*.*.*)</label>
+                        <div class="version-prefix">
+                            <span>v</span>
+                            <input type="text" class="version-input" id="verMajor" value="1" inputmode="numeric" pattern="[0-9]*" />
+                            <span class="dot">.</span>
+                            <input type="text" class="version-input" id="verMinor" value="0" inputmode="numeric" pattern="[0-9]*" />
+                            <span class="dot">.</span>
+                            <input type="text" class="version-input" id="verPatch" value="0" inputmode="numeric" pattern="[0-9]*" />
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Месяц</label>
+                        <select id="verMonth">
+                            <option value="Январь">Январь</option>
+                            <option value="Февраль">Февраль</option>
+                            <option value="Март">Март</option>
+                            <option value="Апрель">Апрель</option>
+                            <option value="Май">Май</option>
+                            <option value="Июнь">Июнь</option>
+                            <option value="Июль">Июль</option>
+                            <option value="Август">Август</option>
+                            <option value="Сентябрь">Сентябрь</option>
+                            <option value="Октябрь">Октябрь</option>
+                            <option value="Ноябрь">Ноябрь</option>
+                            <option value="Декабрь">Декабрь</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Год</label>
+                        <input type="text" class="version-input" id="verYear" value="2026" inputmode="numeric" pattern="[0-9]*" />
+                    </div>
+                    <div class="form-group">
+                        <label>Разработчик</label>
+                        <input type="text" id="verDev" value="Разработчик" placeholder="Имя" />
+                    </div>
+                    <div class="form-group" style="flex:0 0 auto; min-width:auto;">
+                        <button class="btn btn-primary" id="applyVersionBtn">Применить</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Уведомление -->
+            <div class="section">
+                <div class="section-title">📢 Информация (баннер)</div>
+                <div class="form-row">
+                    <div class="form-group" style="flex:0 0 180px;">
+                        <label>Тип</label>
+                        <select id="notifType">
+                            <option value="обычное">Обычное</option>
+                            <option value="внимание">Внимание</option>
+                            <option value="важно">Важно</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:3;">
+                        <label>Текст</label>
+                        <textarea id="notifText" rows="2" placeholder="Введите текст уведомления…"></textarea>
+                    </div>
+                    <div class="form-group" style="flex:0 0 auto; min-width:auto;">
+                        <button class="btn btn-primary" id="applyNotifBtn">Применить</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Отправка по почте -->
+            <div class="section">
+                <div class="section-title">📧 Отправка по почте</div>
+                <div class="form-row">
+                    <div class="form-group" style="flex:1;">
+                        <label>Email получателя</label>
+                        <input type="email" id="recipientEmail" placeholder="example@domain.com" />
+                    </div>
+                    <div class="form-group" style="flex:0 0 auto; min-width:auto;">
+                        <button class="btn btn-primary" id="applyEmailBtn">Сохранить</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Excel -->
+            <div class="section">
+                <div class="section-title">📂 Загрузка Excel</div>
+                <div class="excel-zone">
+                    <div class="file-input-wrap">
+                        <input type="file" id="excelFileInput" accept=".xlsx,.xls" />
+                        <button class="btn btn-success" id="importExcelBtn">Импортировать</button>
+                    </div>
+                    <span class="status" id="excelStatus">Файл не выбран</span>
+                    <button class="btn btn-outline btn-sm" id="clearCriteriaBtn">Очистить все</button>
+                </div>
+                <div class="text-muted mt-8">
+                    Ожидается: 1-й столбец – название, 2-й – файлы (через ; или ,), 3-й – ссылки (через ; или ,).
+                </div>
+            </div>
+
+            <!-- Критерии -->
+            <div class="section">
+                <div class="section-title">
+                    📋 Критерии
+                    <span class="badge" id="criteriaCount">0</span>
+                    <button class="btn btn-primary btn-sm" id="addCriterionBtn">+ Добавить</button>
+                </div>
+                <div id="criteriaListContainer" class="criteria-list">
+                    <div class="text-muted text-center" style="padding:16px;">Нет критериев. Загрузите Excel или добавьте вручную.</div>
+                </div>
+            </div>
+
+            <!-- Экспорт / Импорт JSON (настроек) -->
+            <div class="section">
+                <div class="section-title">💾 Экспорт / Импорт данных</div>
+                <div class="json-actions">
+                    <button class="btn btn-primary" id="exportJsonBtn">📤 Экспортировать JSON</button>
+                    <button class="btn btn-outline" id="importJsonBtn">📥 Импортировать JSON</button>
+                    <input type="file" id="jsonFileInput" accept=".json" style="display:none;" />
+                    <span class="text-muted" id="jsonStatus"></span>
+                </div>
+                <div class="text-muted mt-8">Экспортируйте данные для переноса на другую страницу или домен.</div>
+            </div>
+        </div>
+
+        <!-- ====== ВКЛАДКА ИСТОРИЯ ====== -->
+        <div id="historyPanel" style="display:none;">
+            <div class="section">
+                <div class="section-title">
+                    📜 История заполнений
+                    <span class="badge" id="historyCount">0</span>
+                    <button class="btn btn-danger btn-sm" id="clearHistoryBtn">🗑 Очистить историю</button>
+                    <button class="btn btn-primary btn-sm" id="exportHistoryBtn">📤 Экспорт JSON</button>
+                    <button class="btn btn-success btn-sm" id="exportHistoryExcelBtn">📊 Экспорт в Excel</button>
+                    <button class="btn btn-outline btn-sm" id="importHistoryBtn">📥 Импорт JSON</button>
+                    <input type="file" id="historyFileInput" accept=".json" style="display:none;" />
+                </div>
+                <div id="historyContainer">
+                    <table class="history-table">
+                        <thead><tr><th>#</th><th>Дата</th><th>Заполняющий</th><th>Подразделение</th><th>Версия</th><th>Выполнено</th></tr></thead>
+                        <tbody id="historyBody"><tr><td colspan="6" class="empty">Нет записей</td></tr></tbody>
+                    </table>
+                    <div id="historyDetail" class="history-detail" style="display:none;">
+                        <button class="btn btn-outline btn-sm close-btn" id="closeDetailBtn">✕ Закрыть</button>
+                        <div id="detailContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ========== ДАННЫЕ ==========
+            let data = {
+                version: { major: 1, minor: 0, patch: 0, month: 'Январь', year: 2026, developer: 'Разработчик' },
+                notification: { type: 'обычное', text: '' },
+                recipientEmail: '',
+                criteria: [] // { id, name, files: [{name, data}], links: [] }
+            };
+            let nextId = 1;
+            let history = [];
+
+            // ========== DOM ==========
+            const $ = (s) => document.querySelector(s);
+            const $$ = (s) => document.querySelectorAll(s);
+
+            const tabSettings = $('#tabSettings');
+            const tabHistory = $('#tabHistory');
+            const settingsPanel = $('#settingsPanel');
+            const historyPanel = $('#historyPanel');
+
+            const verMajor = $('#verMajor');
+            const verMinor = $('#verMinor');
+            const verPatch = $('#verPatch');
+            const verMonth = $('#verMonth');
+            const verYear = $('#verYear');
+            const verDev = $('#verDev');
+            const applyVersionBtn = $('#applyVersionBtn');
+            const notifType = $('#notifType');
+            const notifText = $('#notifText');
+            const applyNotifBtn = $('#applyNotifBtn');
+            const recipientEmail = $('#recipientEmail');
+            const applyEmailBtn = $('#applyEmailBtn');
+            const excelFileInput = $('#excelFileInput');
+            const importExcelBtn = $('#importExcelBtn');
+            const excelStatus = $('#excelStatus');
+            const clearCriteriaBtn = $('#clearCriteriaBtn');
+            const criteriaListContainer = $('#criteriaListContainer');
+            const addCriterionBtn = $('#addCriterionBtn');
+            const criteriaCount = $('#criteriaCount');
+            const exportJsonBtn = $('#exportJsonBtn');
+            const importJsonBtn = $('#importJsonBtn');
+            const jsonFileInput = $('#jsonFileInput');
+            const jsonStatus = $('#jsonStatus');
+
+            const historyBody = $('#historyBody');
+            const historyCount = $('#historyCount');
+            const clearHistoryBtn = $('#clearHistoryBtn');
+            const exportHistoryBtn = $('#exportHistoryBtn');
+            const exportHistoryExcelBtn = $('#exportHistoryExcelBtn');
+            const importHistoryBtn = $('#importHistoryBtn');
+            const historyFileInput = $('#historyFileInput');
+            const historyDetail = $('#historyDetail');
+            const detailContent = $('#detailContent');
+            const closeDetailBtn = $('#closeDetailBtn');
+
+            // ========== ХРАНЕНИЕ ==========
+            function saveData() {
+                try { localStorage.setItem('checklistData', JSON.stringify(data)); } catch (e) {}
+            }
+
+            function loadData() {
+                try {
+                    const raw = localStorage.getItem('checklistData');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (parsed.version) Object.assign(data.version, parsed.version);
+                        if (parsed.notification) Object.assign(data.notification, parsed.notification);
+                        if (parsed.recipientEmail !== undefined) data.recipientEmail = parsed.recipientEmail;
+                        if (Array.isArray(parsed.criteria)) {
+                            data.criteria = parsed.criteria.map(c => {
+                                const { checked, status, comment, ...rest } = c;
+                                return rest;
+                            });
+                            let max = 0;
+                            data.criteria.forEach(c => { if (c.id && parseInt(c.id) > max) max = parseInt(c.id); });
+                            nextId = max + 1;
+                        }
+                        data.criteria.forEach(c => { if (!c.id) c.id = String(nextId++); });
+                    }
+                } catch (e) { console.warn('Ошибка загрузки:', e); }
+                syncUI();
+            }
+
+            function saveHistory() {
+                try { localStorage.setItem('checklistHistory', JSON.stringify(history)); } catch (e) {}
+            }
+
+            function loadHistory() {
+                try {
+                    const raw = localStorage.getItem('checklistHistory');
+                    if (raw) {
+                        const parsed = JSON.parse(raw);
+                        if (Array.isArray(parsed)) history = parsed;
+                    }
+                } catch (e) { console.warn('Ошибка загрузки истории:', e); }
+                renderHistory();
+            }
+
+            // ========== СИНХРОНИЗАЦИЯ UI ==========
+            function syncUI() {
+                const v = data.version;
+                verMajor.value = v.major;
+                verMinor.value = v.minor;
+                verPatch.value = v.patch;
+                verMonth.value = v.month || 'Январь';
+                verYear.value = v.year;
+                verDev.value = v.developer || '';
+                notifType.value = data.notification.type || 'обычное';
+                notifText.value = data.notification.text || '';
+                recipientEmail.value = data.recipientEmail || '';
+                renderCriteriaManagement();
+                excelStatus.textContent = `Загружено ${data.criteria.length} критериев`;
+            }
+
+            // ========== УПРАВЛЕНИЕ КРИТЕРИЯМИ ==========
+            function renderCriteriaManagement() {
+                const items = data.criteria;
+                const container = criteriaListContainer;
+                const countEl = criteriaCount;
+
+                if (!items.length) {
+                    container.innerHTML =
+                        `<div class="text-muted text-center" style="padding:16px;">Нет критериев. Загрузите Excel или добавьте вручную.</div>`;
+                    countEl.textContent = '0';
+                    return;
+                }
+
+                let html = '';
+                items.forEach((c, idx) => {
+                    let filesHtml = '';
+                    if (c.files && c.files.length) {
+                        c.files.forEach((f, fi) => {
+                            const ext = f.name.split('.').pop() || 'file';
+                            filesHtml += `
+                                <span class="tag" title="${f.name}">📎 ${f.name.length > 18 ? f.name.slice(0,16)+'…' : f.name} <span style="font-weight:600;text-transform:uppercase;font-size:9px;background:#cbd5e1;padding:0 6px;border-radius:4px;color:#334155;">${ext}</span>
+                                <span class="del" data-action="delFile" data-id="${c.id}" data-fidx="${fi}">×</span>
+                                </span>
+                            `;
+                        });
+                    } else {
+                        filesHtml = `<span class="text-muted" style="font-size:12px;">нет файлов</span>`;
+                    }
+
+                    let linksHtml = '';
+                    if (c.links && c.links.length) {
+                        c.links.forEach((link, li) => {
+                            const short = link.length > 25 ? link.slice(0, 22) + '…' : link;
+                            linksHtml += `
+                                <span class="tag tag-link">🔗 ${short}
+                                <span class="del" data-action="delLink" data-id="${c.id}" data-lidx="${li}">×</span>
+                                </span>
+                            `;
+                        });
+                    } else {
+                        linksHtml = `<span class="text-muted" style="font-size:12px;">нет ссылок</span>`;
+                    }
+
+                    html += `
+                        <div class="criterion-card" data-id="${c.id}">
+                            <div class="head">
+                                <input class="name-input" type="text" value="${c.name || ''}" placeholder="Название критерия" data-id="${c.id}" data-action="rename" />
+                                <div class="actions">
+                                    <button class="btn btn-danger btn-xs" data-action="deleteCriterion" data-id="${c.id}">🗑 Удалить</button>
+                                </div>
+                            </div>
+                            <div class="body">
+                                <div class="attach-section">
+                                    <div class="label-sm">📎 Файлы</div>
+                                    <div class="items">${filesHtml}</div>
+                                    <div class="add-row">
+                                        <input type="file" data-id="${c.id}" data-action="fileInput" style="max-width:140px;" />
+                                        <button class="btn btn-primary btn-xs" data-action="addFile" data-id="${c.id}">Добавить</button>
+                                    </div>
+                                </div>
+                                <div class="attach-section">
+                                    <div class="label-sm">🔗 Ссылки</div>
+                                    <div class="items">${linksHtml}</div>
+                                    <div class="add-row">
+                                        <input type="url" placeholder="https://..." data-id="${c.id}" data-action="linkInput" style="min-width:140px;" />
+                                        <button class="btn btn-primary btn-xs" data-action="addLink" data-id="${c.id}">Добавить</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+                countEl.textContent = `${items.length}`;
+
+                // События
+                container.querySelectorAll('input[data-action="rename"]').forEach(inp => {
+                    inp.addEventListener('change', function() {
+                        const id = this.dataset.id;
+                        const crit = data.criteria.find(c => c.id === id);
+                        if (crit) {
+                            crit.name = this.value.trim() || 'Без названия';
+                            saveData();
+                        }
+                    });
+                });
+                container.querySelectorAll('[data-action="deleteCriterion"]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        if (!confirm('Удалить этот критерий?')) return;
+                        data.criteria = data.criteria.filter(c => c.id !== id);
+                        saveData();
+                        renderCriteriaManagement();
+                    });
+                });
+                container.querySelectorAll('[data-action="addFile"]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        const card = this.closest('.criterion-card');
+                        const fileInput = card.querySelector('input[data-action="fileInput"]');
+                        const file = fileInput.files[0];
+                        if (!file) { alert('Выберите файл'); return; }
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const crit = data.criteria.find(c => c.id === id);
+                            if (crit) {
+                                if (!crit.files) crit.files = [];
+                                crit.files.push({ name: file.name, data: e.target.result });
+                                saveData();
+                                renderCriteriaManagement();
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                        fileInput.value = '';
+                    });
+                });
+                container.querySelectorAll('[data-action="addLink"]').forEach(btn => {
+                    btn.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        const card = this.closest('.criterion-card');
+                        const linkInput = card.querySelector('input[data-action="linkInput"]');
+                        const url = linkInput.value.trim();
+                        if (!url) { alert('Введите ссылку'); return; }
+                        try { new URL(url); } catch (_) { alert('Введите корректный URL'); return; }
+                        const crit = data.criteria.find(c => c.id === id);
+                        if (crit) {
+                            if (!crit.links) crit.links = [];
+                            crit.links.push(url);
+                            saveData();
+                            renderCriteriaManagement();
+                        }
+                        linkInput.value = '';
+                    });
+                });
+                container.querySelectorAll('[data-action="delFile"]').forEach(el => {
+                    el.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        const fidx = parseInt(this.dataset.fidx);
+                        const crit = data.criteria.find(c => c.id === id);
+                        if (crit && crit.files && crit.files.length > fidx) {
+                            crit.files.splice(fidx, 1);
+                            saveData();
+                            renderCriteriaManagement();
+                        }
+                    });
+                });
+                container.querySelectorAll('[data-action="delLink"]').forEach(el => {
+                    el.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        const lidx = parseInt(this.dataset.lidx);
+                        const crit = data.criteria.find(c => c.id === id);
+                        if (crit && crit.links && crit.links.length > lidx) {
+                            crit.links.splice(lidx, 1);
+                            saveData();
+                            renderCriteriaManagement();
+                        }
+                    });
+                });
+            }
+
+            // ========== ИСТОРИЯ ==========
+            function renderHistory() {
+                const tbody = historyBody;
+                const countEl = historyCount;
+                if (!history.length) {
+                    tbody.innerHTML = `<tr><td colspan="6" class="empty">Нет записей</td></tr>`;
+                    countEl.textContent = '0';
+                    return;
+                }
+                let html = '';
+                history.forEach((rec, index) => {
+                    const total = data.criteria.length;
+                    let done = 0;
+                    if (rec.results) {
+                        Object.values(rec.results).forEach(r => { if (r && r.status === 'yes') done++; });
+                    }
+                    const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+                    html += `
+                        <tr data-id="${rec.id}">
+                            <td>${index + 1}</td>
+                            <td>${rec.date || '—'}</td>
+                            <td>${rec.filler || '—'}</td>
+                            <td>${rec.department || '—'}</td>
+                            <td>${rec.version || '—'}</td>
+                            <td>${done}/${total} (${percent}%)</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+                countEl.textContent = `${history.length}`;
+                tbody.querySelectorAll('tr[data-id]').forEach(tr => {
+                    tr.addEventListener('click', function() {
+                        const id = this.dataset.id;
+                        showHistoryDetail(id);
+                    });
+                });
+            }
+
+            function showHistoryDetail(id) {
+                const rec = history.find(h => h.id === id);
+                if (!rec) return;
+                const criteria = data.criteria;
+                let html = `<div style="margin-bottom:8px;"><strong>Запись от ${rec.date || '—'}</strong> (версия ${rec.version || '—'})</div>`;
+                html += `<div><strong>Заполняющий:</strong> ${rec.filler || '—'}</div>`;
+                html += `<div style="margin-bottom:8px;"><strong>Подразделение:</strong> ${rec.department || '—'}</div>`;
+                html += `<div style="margin-top:8px; border-top:1px solid #eef2f6; padding-top:8px;">`;
+                criteria.forEach(c => {
+                    const result = rec.results && rec.results[c.id];
+                    const status = result ? result.status : 'na';
+                    const comment = result ? result.comment : '';
+                    let statusText = '';
+                    if (status === 'yes') statusText = '✅ Да';
+                    else if (status === 'no') statusText = '❌ Нет';
+                    else statusText = '⚪ Не применимо';
+                    html += `<div class="item">
+                        <span class="mark">${statusText}</span>
+                        <span class="name">${c.name}</span>
+                        ${comment ? `<span class="comment">(${comment})</span>` : ''}
+                    </div>`;
+                });
+                html += `</div>`;
+                detailContent.innerHTML = html;
+                historyDetail.style.display = 'block';
+            }
+
+            function clearHistory() {
+                if (!history.length) return;
+                if (!confirm('Очистить всю историю?')) return;
+                history = [];
+                saveHistory();
+                renderHistory();
+                historyDetail.style.display = 'none';
+            }
+
+            function exportHistory() {
+                if (!history.length) { alert('Нет записей для экспорта'); return; }
+                const json = JSON.stringify(history, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'history.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            // === НОВАЯ ФУНКЦИЯ: Экспорт истории в Excel ===
+            function exportHistoryExcel() {
+                if (!history.length) {
+                    alert('Нет записей для экспорта');
+                    return;
+                }
+                if (typeof XLSX === 'undefined') {
+                    alert('Библиотека XLSX не загружена. Проверьте интернет.');
+                    return;
+                }
+
+                const criteria = data.criteria;
+                // Заголовки
+                const headers = ['#', 'Дата', 'Заполняющий', 'Подразделение', 'Версия'];
+                criteria.forEach(c => {
+                    headers.push(c.name + ' (статус)');
+                    headers.push(c.name + ' (комментарий)');
+                });
+
+                const rows = [];
+                history.forEach((rec, index) => {
+                    const row = [
+                        index + 1,
+                        rec.date || '',
+                        rec.filler || '',
+                        rec.department || '',
+                        rec.version || ''
+                    ];
+                    criteria.forEach(c => {
+                        const result = rec.results && rec.results[c.id];
+                        const status = result ? result.status : 'na';
+                        let statusText = '';
+                        if (status === 'yes') statusText = 'Да';
+                        else if (status === 'no') statusText = 'Нет';
+                        else statusText = 'Не применимо';
+                        const comment = result ? (result.comment || '') : '';
+                        row.push(statusText, comment);
+                    });
+                    rows.push(row);
+                });
+
+                const wsData = [headers, ...rows];
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                XLSX.utils.book_append_sheet(wb, ws, 'История');
+                const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+                const blob = new Blob([wbout], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `history_${new Date().toISOString().slice(0,10)}.xlsx`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+
+            function importHistory(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        if (!Array.isArray(imported)) { alert('Неверный формат'); return; }
+                        imported.forEach(rec => {
+                            if (!rec.id) rec.id = Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+                            if (!rec.results) rec.results = {};
+                        });
+                        const existingIds = new Set(history.map(h => h.id));
+                        let added = 0;
+                        imported.forEach(rec => {
+                            if (!existingIds.has(rec.id)) {
+                                history.push(rec);
+                                added++;
+                            }
+                        });
+                        saveHistory();
+                        renderHistory();
+                        alert(`Импортировано ${added} записей`);
+                    } catch (err) {
+                        alert('Ошибка: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            // ========== ДЕЙСТВИЯ ==========
+            function applyVersion() {
+                data.version.major = parseInt(verMajor.value) || 0;
+                data.version.minor = parseInt(verMinor.value) || 0;
+                data.version.patch = parseInt(verPatch.value) || 0;
+                data.version.month = verMonth.value;
+                data.version.year = parseInt(verYear.value) || 2026;
+                data.version.developer = verDev.value.trim() || 'Разработчик';
+                saveData();
+                syncUI();
+            }
+
+            function applyNotification() {
+                data.notification.type = notifType.value;
+                data.notification.text = notifText.value;
+                saveData();
+                syncUI();
+            }
+
+            function applyEmail() {
+                data.recipientEmail = recipientEmail.value.trim();
+                saveData();
+                syncUI();
+            }
+
+            function importExcel() {
+                if (typeof XLSX === 'undefined') {
+                    alert('Библиотека XLSX не загружена. Проверьте интернет.');
+                    return;
+                }
+                const file = excelFileInput.files[0];
+                if (!file) { alert('Выберите файл'); return; }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const workbook = XLSX.read(e.target.result, { type: 'array' });
+                        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        let added = 0;
+                        json.forEach(row => {
+                            if (!row || row.length === 0) return;
+                            const name = row[0] ? String(row[0]).trim() : '';
+                            if (!name) return;
+                            if (data.criteria.some(c => c.name.toLowerCase() === name.toLowerCase())) return;
+                            let files = [];
+                            let links = [];
+                            if (row.length > 1 && row[1]) {
+                                const rawFiles = String(row[1]);
+                                rawFiles.split(/[;,;]\s*/).forEach(f => {
+                                    const trimmed = f.trim();
+                                    if (trimmed) files.push(trimmed);
+                                });
+                            }
+                            if (row.length > 2 && row[2]) {
+                                const rawLinks = String(row[2]);
+                                rawLinks.split(/[;,;]\s*/).forEach(l => {
+                                    const trimmed = l.trim();
+                                    if (trimmed && trimmed.startsWith('http')) links.push(trimmed);
+                                });
+                            }
+                            data.criteria.push({
+                                id: String(nextId++),
+                                name: name,
+                                files: files.map(f => ({ name: f, data: '' })),
+                                links: links
+                            });
+                            added++;
+                        });
+                        saveData();
+                        renderCriteriaManagement();
+                        excelStatus.textContent = `✅ Импортировано ${added} (всего ${data.criteria.length})`;
+                        excelFileInput.value = '';
+                    } catch (err) {
+                        alert('Ошибка: ' + err.message);
+                        excelStatus.textContent = '❌ Ошибка';
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            function clearAllCriteria() {
+                if (!data.criteria.length) return;
+                if (!confirm('Удалить все критерии?')) return;
+                data.criteria = [];
+                saveData();
+                renderCriteriaManagement();
+                excelStatus.textContent = '🧹 Все критерии удалены';
+            }
+
+            function addCriterion() {
+                const name = prompt('Введите название критерия:');
+                if (name !== null && name.trim()) {
+                    data.criteria.push({ id: String(nextId++), name: name.trim(), files: [], links: [] });
+                    saveData();
+                    renderCriteriaManagement();
+                }
+            }
+
+            function exportJson() {
+                const json = JSON.stringify(data, null, 2);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'checklist_data.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                jsonStatus.textContent = '✅ Экспорт выполнен';
+            }
+
+            function importJson(file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        if (!imported.version || !imported.notification || !Array.isArray(imported.criteria)) {
+                            alert('Неверный формат JSON.');
+                            return;
+                        }
+                        data = imported;
+                        let max = 0;
+                        data.criteria.forEach(c => { if (c.id && parseInt(c.id) > max) max = parseInt(c.id); });
+                        nextId = max + 1;
+                        data.criteria.forEach(c => {
+                            if (!c.files) c.files = [];
+                            if (!c.links) c.links = [];
+                            delete c.checked;
+                            delete c.status;
+                            delete c.comment;
+                            if (!c.id) c.id = String(nextId++);
+                        });
+                        if (!data.recipientEmail) data.recipientEmail = '';
+                        saveData();
+                        syncUI();
+                        jsonStatus.textContent = '✅ Данные импортированы успешно';
+                    } catch (err) {
+                        alert('Ошибка при импорте: ' + err.message);
+                        jsonStatus.textContent = '❌ Ошибка импорта';
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            function showSettings() {
+                settingsPanel.style.display = 'block';
+                historyPanel.style.display = 'none';
+                tabSettings.className = 'btn btn-primary';
+                tabHistory.className = 'btn btn-outline';
+            }
+
+            function showHistoryTab() {
+                settingsPanel.style.display = 'none';
+                historyPanel.style.display = 'block';
+                tabSettings.className = 'btn btn-outline';
+                tabHistory.className = 'btn btn-primary';
+                renderHistory();
+            }
+
+            // ========== ИНИЦИАЛИЗАЦИЯ ==========
+            function init() {
+                loadData();
+                loadHistory();
+
+                tabSettings.addEventListener('click', showSettings);
+                tabHistory.addEventListener('click', showHistoryTab);
+
+                applyVersionBtn.addEventListener('click', applyVersion);
+                applyNotifBtn.addEventListener('click', applyNotification);
+                applyEmailBtn.addEventListener('click', applyEmail);
+                importExcelBtn.addEventListener('click', importExcel);
+                clearCriteriaBtn.addEventListener('click', clearAllCriteria);
+                addCriterionBtn.addEventListener('click', addCriterion);
+
+                exportJsonBtn.addEventListener('click', exportJson);
+                importJsonBtn.addEventListener('click', function() { jsonFileInput.click(); });
+                jsonFileInput.addEventListener('change', function() {
+                    if (this.files.length) { importJson(this.files[0]);
+                        this.value = ''; }
+                });
+
+                clearHistoryBtn.addEventListener('click', clearHistory);
+                exportHistoryBtn.addEventListener('click', exportHistory);
+                exportHistoryExcelBtn.addEventListener('click', exportHistoryExcel);
+                importHistoryBtn.addEventListener('click', function() { historyFileInput.click(); });
+                historyFileInput.addEventListener('change', function() {
+                    if (this.files.length) { importHistory(this.files[0]);
+                        this.value = ''; }
+                });
+                closeDetailBtn.addEventListener('click', function() {
+                    historyDetail.style.display = 'none';
+                });
+
+                [verMajor, verMinor, verPatch, verYear, verDev].forEach(el => {
+                    el.addEventListener('keydown', function(e) { if (e.key === 'Enter') applyVersion(); });
+                });
+                verMonth.addEventListener('change', applyVersion);
+                notifText.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) applyNotification();
+                });
+                recipientEmail.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') applyEmail();
+                });
+
+                showSettings();
+            }
+
+            document.addEventListener('DOMContentLoaded', init);
+        })();
+    </script>
+</body>
+</html>
