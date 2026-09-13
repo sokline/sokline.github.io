@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ОПЕРАТИВКА</title>
+<title>Показатели</title>
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 16px; }
@@ -43,7 +43,7 @@
     <div class="card">
         <h1>📋 ОПЕРАТИВКА</h1>
 
-        <label for="fio">ФИО заполняющего</label>
+        <label for="fio">ФИО заполняющего (ИНИЦИАЛАМИ)</label>
         <input type="text" id="fio" placeholder="Иванов Иван Иванович" autocomplete="name">
 
         <label for="datetime">Дата и время</label>
@@ -52,11 +52,11 @@
         <label for="department">Подразделение</label>
         <select id="department"><option value="">— загрузка… —</option></select>
 
-        <label for="informant">ФИО информатора</label>
+        <label for="informant">Фамилия интервьюируемого</label>
         <input type="text" id="informant" placeholder="Петров Пётр Петрович">
 
         <div id="indicators-container">
-            <div class="section-title">Показатели</div>
+            <div class="section-title">Значение</div>
             <div class="row indicator-row">
                 <div>
                     <label>Показатель</label>
