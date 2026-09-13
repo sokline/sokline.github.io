@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ОПЕРАТИВКА</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 16px; }
+    .container { max-width: 600px; margin: 0 auto; }
+    .banner { background: #fff3cd; border-left: 4px solid #ff9500; padding: 14px 16px; border-radius: 8px; margin-bottom: 12px; font-size: 0.9rem; color: #5c4400; display: none; }
+    .banner.show { display: block; }
+    .banner .banner-title { font-weight: 700; margin-bottom: 4px; font-size: 0.8rem; color: #b36b00; text-transform: uppercase; letter-spacing: 0.5px; }
+    .banner .banner-time { font-size: 0.75rem; color: #8a6d00; margin-top: 6px; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    h1 { font-size: 1.4rem; margin-bottom: 20px; color: #1a1a1a; }
+    label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 4px; margin-top: 12px; }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem; background: #fff; }
+    input:focus, select:focus { outline: none; border-color: #007aff; }
+    input[readonly] { background: #f0f0f0; }
+    .btn { display: block; width: 100%; padding: 14px; margin-top: 20px; background: #007aff; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .btn:disabled { background: #999; cursor: wait; }
+    .btn-secondary { background: #34c759; }
+    .row { display: flex; gap: 8px; align-items: end; }
+    .row > * { flex: 1; }
+    .row .btn-remove { flex: 0 0 auto; background: #ff3b30; color: #fff; border: none; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-size: 1rem; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; max-width: 90%; text-align: center; }
+    .toast.show { opacity: 1; }
+    .toast.ok { background: #34c759; }
+    .toast.err { background: #ff3b30; }
+    .section-title { font-size: 0.9rem; font-weight: 600; color: #007aff; margin-top: 16px; margin-bottom: 4px; }
+    .status { font-size: 0.85rem; color: #666; margin-top: 10px; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="banner" id="banner">
+        <div class="banner-title">📢 Сообщение</div>
+        <div id="banner-text"></div>
+        <div class="banner-time" id="banner-time"></div>
+    </div>
+
+    <div class="card">
+        <h1>📋 ОПЕРАТИВКА</h1>
+
+        <label for="fio">ФИО заполняющего</label>
+        <input type="text" id="fio" placeholder="Иванов Иван Иванович" autocomplete="name">
+
+        <label for="datetime">Дата и время</label>
+        <input type="text" id="datetime" readonly>
+
+        <label for="department">Подразделение</label>
+        <select id="department"><option value="">— загрузка… —</option></select>
+
+        <label for="informant">ФИО информатора</label>
+        <input type="text" id="informant" placeholder="Петров Пётр Петрович">
+
+        <div id="indicators-container">
+            <div class="section-title">Показатели</div>
+            <div class="row indicator-row">
+                <div>
+                    <label>Показатель</label>
+                    <input type="number" class="indicator-value" placeholder="0" step="any" inputmode="decimal">
+                </div>
+                <button class="btn-remove" onclick="removeIndicator(this)" title="Удалить">✕</button>
+            </div>
+        </div>
+
+        <button class="btn btn-secondary" onclick="addIndicator()" style="margin-top:8px;">➕ Добавить показатель</button>
+        <button class="btn" id="submit-btn" onclick="sendData()">📤 Отправить данные</button>
+        <div class="status" id="status"></div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_BASE = 'https://operativka.YOUR-SUBDOMAIN.workers.dev';
+const LS_FIO = 'operativka_fio';
+const LS_VER = 'app_version';
+
+function toast(msg, kind = '') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = 'toast show ' + kind;
+    setTimeout(() => t.className = 'toast ' + kind, 2800);
+}
+function setStatus(s) { document.getElementById('status').textContent = s; }
+function formatDateTime() {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    return `${p(d.getDate())}.${p(d.getMonth()+1)}.${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+async function api(path, opts = {}) {
+    const r = await fetch(API_BASE + path, {
+        ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) }
+    });
+    if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+    return r.json();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    document.getElementById('datetime').value = formatDateTime();
+    setInterval(() => document.getElementById('datetime').value = formatDateTime(), 30000);
+
+    const fio = localStorage.getItem(LS_FIO);
+    if (fio) document.getElementById('fio').value = fio;
+    document.getElementById('fio').addEventListener('input', function () {
+        localStorage.setItem(LS_FIO, this.value);
+    });
+
+    await loadDepartments();
+    await loadActualMessage();
+    checkVersion();
+    setInterval(checkVersion, 30000);
+    setInterval(loadActualMessage, 60000);  // обновлять сообщение раз в минуту
+});
+
+async function loadDepartments() {
+    const select = document.getElementById('department');
+    try {
+        const { content } = await api('/api/departments');
+        const deps = content ? JSON.parse(content) : [];
+        select.innerHTML = '<option value="">— выберите —</option>';
+        deps.forEach(d => {
+            const o = document.createElement('option');
+            o.value = d; o.textContent = d;
+            select.appendChild(o);
+        });
+    } catch (e) {
+        select.innerHTML = '<option value="">Ошибка загрузки</option>';
+    }
+}
+
+async function loadActualMessage() {
+    const banner = document.getElementById('banner');
+    try {
+        const { message } = await api('/api/message');
+        if (message && message.text) {
+            document.getElementById('banner-text').textContent = message.text;
+            document.getElementById('banner-time').textContent =
+                'от ' + new Date(message.createdAt).toLocaleString('ru-RU');
+            banner.classList.add('show');
+        } else {
+            banner.classList.remove('show');
+        }
+    } catch (e) {
+        banner.classList.remove('show');
+    }
+}
+
+function addIndicator() {
+    const row = document.createElement('div');
+    row.className = 'row indicator-row';
+    row.innerHTML = `
+        <div>
+            <label>Показатель</label>
+            <input type="number" class="indicator-value" placeholder="0" step="any" inputmode="decimal">
+        </div>
+        <button class="btn-remove" onclick="removeIndicator(this)">✕</button>`;
+    document.getElementById('indicators-container').appendChild(row);
+    row.querySelector('.indicator-value').focus();
+}
+function removeIndicator(btn) {
+    if (document.querySelectorAll('.indicator-row').length <= 1) {
+        toast('Минимум один показатель'); return;
+    }
+    btn.closest('.indicator-row').remove();
+}
+
+async function sendData() {
+    const fio = document.getElementById('fio').value.trim();
+    if (!fio) return toast('Укажите ФИО заполняющего', 'err');
+    const dept = document.getElementById('department').value;
+    if (!dept) return toast('Выберите подразделение', 'err');
+    const informant = document.getElementById('informant').value.trim();
+    const values = [...document.querySelectorAll('.indicator-value')]
+        .map(i => parseFloat(i.value)).filter(v => !isNaN(v));
+    if (!values.length) return toast('Введите хотя бы один показатель', 'err');
+
+    const record = {
+        id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+        fio, datetime: formatDateTime(), department: dept,
+        informant: informant || '—',
+        values,
+        total: values.reduce((a, b) => a + b, 0),
+        createdAt: new Date().toISOString()
+    };
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true; setStatus('Отправка...');
+    try {
+        await api('/api/records', { method: 'POST', body: JSON.stringify({ record }) });
+        toast('✅ Данные сохранены', 'ok');
+        setStatus('Запись отправлена в репозиторий.');
+        document.getElementById('informant').value = '';
+        const container = document.getElementById('indicators-container');
+        [...container.querySelectorAll('.indicator-row')].slice(1).forEach(r => r.remove());
+        document.querySelector('.indicator-value').value = '';
+    } catch (e) {
+        toast('Ошибка отправки', 'err');
+        setStatus('Не удалось сохранить, попробуйте ещё раз.');
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function checkVersion() {
+    try {
+        const { content } = await api('/api/version');
+        if (!content) return;
+        const ver = JSON.parse(content).version;
+        const local = localStorage.getItem(LS_VER);
+        if (local && local !== ver) {
+            localStorage.setItem(LS_VER, ver);
+            const url = new URL(location.href);
+            url.searchParams.set('v', ver);
+            location.replace(url.toString());
+            return;
+        }
+        localStorage.setItem(LS_VER, ver);
+    } catch (e) { /* тихо */ }
+}
+</script>
+</body>
+</html>
