@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>АДМИН</title>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; padding: 16px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; }
+    h2 { font-size: 1.05rem; margin-bottom: 10px; }
+    label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 4px; margin-top: 8px; }
+    .hint { font-size: 0.72rem; color: #999; margin-top: 3px; font-style: italic; }
+    input, select, textarea { width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; font-family: inherit; }
+    textarea { min-height: 80px; resize: vertical; }
+    .btn { display: inline-block; padding: 9px 18px; margin-top: 10px; background: #007aff; color: #fff; border: none; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+    .btn:disabled { background: #999; cursor: wait; }
+    .btn-green { background: #34c759; }
+    .btn-orange { background: #ff9500; }
+    .btn-red { background: #ff3b30; }
+    .btn-sm { padding: 4px 10px; font-size: 0.75rem; margin: 0 2px; border-radius: 6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .stat-card { background: #f8f9fa; border-radius: 10px; padding: 14px; text-align: center; }
+    .stat-card .value { font-size: 1.6rem; font-weight: 700; color: #007aff; }
+    .stat-card .label { font-size: 0.78rem; color: #666; margin-top: 4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    th, td { padding: 7px 9px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
+    th { background: #f8f9fa; font-weight: 600; position: sticky; top: 0; z-index: 1; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #333; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 9999; max-width: 90%; text-align: center; }
+    .toast.show { opacity: 1; }
+    .toast.ok { background: #34c759; }
+    .toast.err { background: #ff3b30; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .tab { padding: 8px 16px; border-radius: 8px; background: #e9ecef; cursor: pointer; font-size: 0.85rem; border: none; font-weight: 600; }
+    .tab.active { background: #007aff; color: #fff; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    canvas { max-height: 300px; }
+    .table-wrap { max-height: 500px; overflow: auto; border: 1px solid #eee; border-radius: 8px; }
+    .row-flex { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+    .row-flex > * { flex: 1; min-width: 140px; }
+    .auth-box { background: #fff8e1; border: 1px solid #ffe082; padding: 16px; border-radius: 8px; }
+    .auth-box input { font-family: monospace; }
+    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 0.78rem; background: #e9ecef; color: #555; }
+    .status-badge.ok { background: #d4f7dc; color: #107c10; }
+    .dept-item { display: flex; align-items: center; gap: 8px; background: #f8f9fa; border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; }
+    .dept-item .name { flex: 1; font-size: 0.9rem; }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+    .modal-bg.show { display: flex; }
+    .modal { background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 500px; }
+    .modal h3 { margin-bottom: 12px; }
+    .msg-row.actual { background: #fff8e1; }
+    .actual-badge { display: inline-block; background: #ff9500; color: #fff; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .checkbox-row input[type="checkbox"] { width: auto; }
+    .checkbox-row label { margin: 0; }
+</style>
+</head>
+<body>
+<div class="container">
+    <h1>⚙️ АДМИН-ПАНЕЛЬ <span class="status-badge" id="conn-badge">не подключено</span></h1>
+
+    <div class="card" id="auth-card">
+        <h2>🔐 Доступ</h2>
+        <div class="auth-box">
+            <label>URL Cloudflare Worker</label>
+            <input type="text" id="worker-url" placeholder="https://operativka.YOUR-SUBDOMAIN.workers.dev">
+            <label>Ключ администратора (ADMIN_KEY)</label>
+            <input type="password" id="admin-key" placeholder="введите ключ">
+            <button class="btn" onclick="saveAuth()">Войти</button>
+        </div>
+    </div>
+
+    <div id="admin-area" style="display:none;">
+        <div class="tabs">
+            <button class="tab active" onclick="mainTab('data', this)">📊 Данные</button>
+            <button class="tab" onclick="mainTab('messages', this)">💬 Сообщения</button>
+        </div>
+
+        <div id="main-data" class="tab-content active">
+
+            <div class="card">
+                <h2>📂 Подразделения</h2>
+                <button class="btn btn-green btn-sm" onclick="addDept()">➕ Добавить</button>
+                <button class="btn btn-sm" onclick="document.getElementById('xlsx-file').click()">📥 Импорт XLSX</button>
+                <input type="file" id="xlsx-file" accept=".xlsx,.xls" style="display:none" onchange="uploadXlsx()">
+                <button class="btn btn-sm" onclick="reloadAll()">🔄 Обновить</button>
+                <div id="dept-list" style="margin-top:12px;"></div>
+            </div>
+
+            <div class="card">
+                <h2>🔖 Версия</h2>
+                <div class="row-flex">
+                    <div><label>Текущая на сервере</label><input type="text" id="version-current" readonly></div>
+                    <div><label>Новая</label><input type="text" id="version-input"></div>
+                    <div style="flex:0 0 auto;">
+                        <button class="btn btn-orange" id="ver-btn" onclick="updateVersion()">Обновить</button>
+                        <button class="btn" onclick="bumpVersion()">+0.0.1</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📊 Дашборд</h2>
+                <div class="grid" id="summary-cards"></div>
+                <div style="margin-top:16px;"><canvas id="chart-departments"></canvas></div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Мониторинг</h2>
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('by-fio', this)">По ФИО заполнявшего</button>
+                    <button class="tab" onclick="switchTab('by-interviewer', this)">По интервьюерам</button>
+                    <button class="tab" onclick="switchTab('raw', this)">Записи</button>
+                </div>
+                <div id="tab-by-fio" class="tab-content active">
+                    <canvas id="chart-fio"></canvas>
+                    <div id="table-fio" class="table-wrap" style="margin-top:10px;"></div>
+                </div>
+                <div id="tab-by-interviewer" class="tab-content">
+                    <canvas id="chart-interviewer"></canvas>
+                    <div id="table-interviewer" class="table-wrap" style="margin-top:10px;"></div>
+                </div>
+                <div id="tab-raw" class="tab-content">
+                    <div id="table-raw" class="table-wrap"></div>
+                </div>
+                <button class="btn btn-green" onclick="exportExcel()">📥 Excel</button>
+                <button class="btn" onclick="saveLocalBackup()">💾 Копия JSON</button>
+            </div>
+        </div>
+
+        <div id="main-messages" class="tab-content">
+            <div class="card">
+                <h2>✍️ Новое сообщение</h2>
+                <label>Текст</label>
+                <textarea id="msg-text" placeholder="Введите текст..."></textarea>
+                <div class="checkbox-row">
+                    <input type="checkbox" id="msg-actual" checked>
+                    <label for="msg-actual">Сделать актуальным (показывается пользователям)</label>
+                </div>
+                <button class="btn btn-green" id="msg-send-btn" onclick="sendMessage()">📤 Отправить</button>
+            </div>
+            <div class="card">
+                <h2>📜 История</h2>
+                <button class="btn" onclick="loadMessages()">🔄 Обновить</button>
+                <div id="messages-list" class="table-wrap" style="margin-top:10px;"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>🚪 Сессия</h2>
+            <button class="btn btn-red" onclick="logout()">Выйти / сменить ключ</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модалка редактирования -->
+<div class="modal-bg" id="edit-modal">
+    <div class="modal">
+        <h3>Редактировать запись</h3>
+        <input type="hidden" id="edit-id">
+        <label>ФИО заполняющего</label>
+        <input type="text" id="edit-fio">
+        <div class="hint">аббревиатура инициалов, 3 символа</div>
+        <label>Дата/время</label><input type="text" id="edit-datetime">
+        <label>Подразделение</label><select id="edit-dept"></select>
+        <label>Интервьюер</label>
+        <input type="text" id="edit-interviewer" placeholder="Иванов И.И.">
+        <div class="hint">Фамилия и инициалы</div>
+        <label>Показатель</label><input type="number" id="edit-value" step="any">
+        <div style="margin-top:14px;">
+            <button class="btn btn-green" onclick="saveEdit()">💾 Сохранить</button>
+            <button class="btn" onclick="closeEdit()">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const LS_WORKER = 'admin_worker_url', LS_KEY = 'admin_key';
+let API_BASE = '', ADMIN_KEY = '';
+let RECORDS = [], DEPTS = [], MESSAGES = [];
+
+function toast(m, k='') { const t = document.getElementById('toast'); t.textContent = m; t.className = 'toast show ' + k; setTimeout(() => t.className = 'toast ' + k, 2800); }
+function setConn(ok, text) { const b = document.getElementById('conn-badge'); b.textContent = text; b.className = 'status-badge' + (ok ? ' ok' : ''); }
+async function api(path, opts={}) {
+    const r = await fetch(API_BASE + path, { ...opts, headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY, ...(opts.headers||{}) } });
+    if (r.status === 401) throw new Error('Неверный ключ');
+    if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+    return r.json();
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
+// Совместимость со старыми записями
+function getInterviewer(r) { return r.interviewer || r.informant || ''; }
+function getValue(r) { return r.value ?? r.total ?? 0; }
+
+// ===== AUTH =====
+function saveAuth() {
+    const url = document.getElementById('worker-url').value.trim().replace(/\/+$/, '');
+    const key = document.getElementById('admin-key').value.trim();
+    if (!url || !key) return toast('Заполните URL и ключ', 'err');
+    localStorage.setItem(LS_WORKER, url); localStorage.setItem(LS_KEY, key);
+    API_BASE = url; ADMIN_KEY = key; boot();
+}
+function logout() { localStorage.removeItem(LS_KEY); location.reload(); }
+function showAuth() {
+    document.getElementById('auth-card').style.display = 'block';
+    document.getElementById('admin-area').style.display = 'none';
+    setConn(false, 'не подключено');
+}
+async function boot() {
+    if (!API_BASE || !ADMIN_KEY) return showAuth();
+    document.getElementById('auth-card').style.display = 'none';
+    document.getElementById('admin-area').style.display = 'block';
+    try {
+        await refreshVersion(); await loadAll(); await loadMessages();
+        setConn(true, 'подключено');
+        setInterval(loadAll, 15000); setInterval(loadMessages, 20000);
+    } catch(e) {
+        setConn(false, 'ошибка'); toast(e.message, 'err');
+        if (e.message.includes('ключ')) logout();
+    }
+}
+async function loadAll() {
+    try {
+        const [rec, dep] = await Promise.all([api('/api/records'), api('/api/departments')]);
+        RECORDS = rec.content ? JSON.parse(rec.content) : [];
+        DEPTS = dep.content ? JSON.parse(dep.content) : [];
+        renderDeptList(); renderDashboard(); setConn(true, 'подключено');
+    } catch(e) { setConn(false, 'ошибка'); }
+}
+async function reloadAll() { toast('Обновляю...'); await refreshVersion(); await loadAll(); await loadMessages(); }
+async function refreshVersion() {
+    const { content } = await api('/api/version');
+    if (content) {
+        const v = JSON.parse(content).version || '';
+        document.getElementById('version-current').value = v;
+        document.getElementById('version-input').value = v;
+    }
+}
+
+// ===== ПОДРАЗДЕЛЕНИЯ =====
+function renderDeptList() {
+    document.getElementById('dept-list').innerHTML = DEPTS.length
+        ? DEPTS.map((d, i) => `
+            <div class="dept-item">
+                <span class="name">${escapeHtml(d)}</span>
+                <button class="btn btn-orange btn-sm" onclick="editDept(${i})">✎ Ред.</button>
+                <button class="btn btn-red btn-sm" onclick="delDept(${i})">✕ Удалить</button>
+            </div>`).join('')
+        : '<p style="color:#888;">Список пуст</p>';
+}
+async function saveDepts() {
+    try {
+        await api('/api/departments', { method: 'PUT', body: JSON.stringify({ departments: DEPTS }) });
+        renderDeptList(); toast('✅ Сохранено', 'ok');
+    } catch(e) { toast('Ошибка: ' + e.message, 'err'); await loadAll(); }
+}
+async function addDept() { const nv = prompt('Название подразделения:'); if (!nv || !nv.trim()) return; DEPTS.push(nv.trim()); await saveDepts(); }
+async function editDept(i) { const nv = prompt('Новое название:', DEPTS[i]); if (!nv || !nv.trim() || nv.trim() === DEPTS[i]) return; DEPTS[i] = nv.trim(); await saveDepts(); }
+async function delDept(i) { if (!confirm(`Удалить "${DEPTS[i]}"?`)) return; DEPTS.splice(i, 1); await saveDepts(); }
+function uploadXlsx() {
+    const file = document.getElementById('xlsx-file').files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async e => {
+        try {
+            const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+            const departments = [...new Set(rows.map(r => (r[0] ?? '').toString().trim()).filter(Boolean))];
+            if (!departments.length) throw new Error('В файле нет данных');
+            if (!confirm(`Найдено ${departments.length} подразделений. Заменить текущий список?`)) return;
+            DEPTS = departments; await saveDepts();
+        } catch(err) { toast('Ошибка XLSX: ' + err.message, 'err'); }
+        finally { document.getElementById('xlsx-file').value = ''; }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// ===== ВЕРСИЯ =====
+async function updateVersion() {
+    const v = document.getElementById('version-input').value.trim();
+    if (!v) return toast('Введите версию', 'err');
+    const btn = document.getElementById('ver-btn'); btn.disabled = true;
+    try {
+        await api('/api/version', { method: 'POST', body: JSON.stringify({ version: v }) });
+        document.getElementById('version-current').value = v;
+        toast('✅ Версия: ' + v, 'ok');
+    } catch(e) { toast('Ошибка: ' + e.message, 'err'); } finally { btn.disabled = false; }
+}
+function bumpVersion() {
+    const cur = document.getElementById('version-current').value || '1.0.0';
+    const p = cur.split('.').map(n => parseInt(n) || 0); while (p.length < 3) p.push(0);
+    p[2] += 1; document.getElementById('version-input').value = p.join('.');
+    updateVersion();
+}
+
+// ===== ДАШБОРД =====
+function renderDashboard() {
+    const byDept = {};
+    RECORDS.forEach(r => byDept[r.department] = (byDept[r.department] || 0) + getValue(r));
+    const totalSum = Object.values(byDept).reduce((a,b) => a+b, 0);
+    document.getElementById('summary-cards').innerHTML = `
+        <div class="stat-card"><div class="value">${totalSum.toFixed(2)}</div><div class="label">Общая сумма</div></div>
+        <div class="stat-card"><div class="value">${RECORDS.length}</div><div class="label">Записей</div></div>
+        <div class="stat-card"><div class="value">${Object.keys(byDept).length}</div><div class="label">Подразделений</div></div>`;
+    drawBar('chart-departments', '_cDept', Object.keys(byDept), Object.values(byDept), '#007aff');
+
+    const byFio = {};
+    RECORDS.forEach(r => byFio[r.fio] = (byFio[r.fio]||0) + getValue(r));
+    renderTable('table-fio', 'ФИО заполнявшего', byFio);
+    drawBar('chart-fio', '_cFio', Object.keys(byFio), Object.values(byFio), '#34c759');
+
+    const byInt = {};
+    RECORDS.forEach(r => { const k = getInterviewer(r) || '—'; byInt[k] = (byInt[k]||0) + getValue(r); });
+    renderTable('table-interviewer', 'Интервьюер', byInt);
+    drawBar('chart-interviewer', '_cInt', Object.keys(byInt), Object.values(byInt), '#ff9500');
+
+    const sorted = RECORDS.slice().sort((a,b) => new Date(b.createdAt||0) - new Date(a.createdAt||0));
+    document.getElementById('table-raw').innerHTML = `
+        <table>
+            <thead><tr><th>Дата/время</th><th>ФИО</th><th>Подразделение</th><th>Интервьюер</th><th>Показатель</th><th style="width:130px;">Действия</th></tr></thead>
+            <tbody>${sorted.map(r => `
+                <tr>
+                    <td>${escapeHtml(r.datetime||'')}</td>
+                    <td>${escapeHtml(r.fio||'')}</td>
+                    <td>${escapeHtml(r.department||'')}</td>
+                    <td>${escapeHtml(getInterviewer(r))}</td>
+                    <td><strong>${getValue(r)}</strong></td>
+                    <td>
+                        <button class="btn btn-orange btn-sm" onclick="editRecord('${r.id}')">✎</button>
+                        <button class="btn btn-red btn-sm" onclick="delRecord('${r.id}')">✕</button>
+                    </td>
+                </tr>`).join('')}</tbody>
+        </table>`;
+}
+function drawBar(cid, ref, labels, data, color) {
+    const ctx = document.getElementById(cid).getContext('2d');
+    if (window[ref]) window[ref].destroy();
+    window[ref] = new Chart(ctx, { type: 'bar',
+        data: { labels, datasets: [{ data, backgroundColor: color, borderRadius: 6 }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+}
+function renderTable(cid, header, dict) {
+    const rows = Object.entries(dict).sort((a,b) => b[1]-a[1]);
+    document.getElementById(cid).innerHTML = `
+        <table><thead><tr><th>${header}</th><th>Сумма</th></tr></thead>
+        <tbody>${rows.map(([k,v]) => `<tr><td>${escapeHtml(k)}</td><td><strong>${v.toFixed(2)}</strong></td></tr>`).join('')}</tbody></table>`;
+}
+
+// ===== РЕДАКТИРОВАНИЕ =====
+async function saveRecords() {
+    try { await api('/api/records', { method: 'PUT', body: JSON.stringify({ records: RECORDS }) }); renderDashboard(); }
+    catch(e) { toast('Ошибка: ' + e.message, 'err'); await loadAll(); }
+}
+async function delRecord(id) {
+    if (!confirm('Удалить запись?')) return;
+    const before = RECORDS.length;
+    RECORDS = RECORDS.filter(r => r.id !== id);
+    if (RECORDS.length === before) return;
+    await saveRecords(); toast('✅ Удалено', 'ok');
+}
+function editRecord(id) {
+    const r = RECORDS.find(x => x.id === id); if (!r) return;
+    document.getElementById('edit-id').value = id;
+    document.getElementById('edit-fio').value = r.fio || '';
+    document.getElementById('edit-datetime').value = r.datetime || '';
+    document.getElementById('edit-interviewer').value = getInterviewer(r);
+    document.getElementById('edit-value').value = getValue(r);
+    document.getElementById('edit-dept').innerHTML =
+        DEPTS.map(d => `<option${d===r.department?' selected':''}>${escapeHtml(d)}</option>`).join('');
+    document.getElementById('edit-modal').classList.add('show');
+}
+function closeEdit() { document.getElementById('edit-modal').classList.remove('show'); }
+async function saveEdit() {
+    const id = document.getElementById('edit-id').value;
+    const r = RECORDS.find(x => x.id === id); if (!r) return closeEdit();
+    r.fio = document.getElementById('edit-fio').value.trim();
+    r.datetime = document.getElementById('edit-datetime').value.trim();
+    r.department = document.getElementById('edit-dept').value;
+    r.interviewer = document.getElementById('edit-interviewer').value.trim();
+    delete r.informant; // убираем старое поле, если было
+    const v = parseFloat(document.getElementById('edit-value').value);
+    r.value = isNaN(v) ? 0 : v; r.total = r.value;
+    closeEdit(); await saveRecords(); toast('✅ Сохранено', 'ok');
+}
+
+// ===== ЭКСПОРТ =====
+function exportExcel() {
+    if (!RECORDS.length) return toast('Нет данных', 'err');
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(RECORDS.map(r => ({
+        'Дата/время': r.datetime, 'ФИО': r.fio, 'Подразделение': r.department,
+        'Интервьюер': getInterviewer(r), 'Показатель': getValue(r)
+    }))), 'Исходные');
+    const byDept = {}; RECORDS.forEach(r => byDept[r.department] = (byDept[r.department]||0) + getValue(r));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.entries(byDept).map(([k,v]) => ({'Подразделение':k,'Сумма':v}))), 'По подразделениям');
+    const byFio = {}; RECORDS.forEach(r => byFio[r.fio] = (byFio[r.fio]||0) + getValue(r));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.entries(byFio).map(([k,v]) => ({'ФИО':k,'Сумма':v}))), 'По ФИО');
+    const byInt = {}; RECORDS.forEach(r => { const k=getInterviewer(r)||'—'; byInt[k]=(byInt[k]||0)+getValue(r); });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(Object.entries(byInt).map(([k,v]) => ({'Интервьюер':k,'Сумма':v}))), 'По интервьюерам');
+    if (MESSAGES.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(MESSAGES.map(m => ({
+        'Дата': new Date(m.createdAt).toLocaleString('ru-RU'), 'Актуально': m.actual ? 'Да' : 'Нет', 'Текст': m.text
+    }))), 'Сообщения');
+    XLSX.writeFile(wb, `мониторинг_${new Date().toISOString().slice(0,10)}.xlsx`);
+    toast('📥 Excel готов', 'ok');
+}
+function saveLocalBackup() {
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), records: RECORDS, departments: DEPTS, messages: MESSAGES }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+    URL.revokeObjectURL(a.href); toast('💾 Копия сохранена', 'ok');
+}
+
+// ===== СООБЩЕНИЯ =====
+async function loadMessages() {
+    try { const r = await api('/api/messages'); MESSAGES = r.content ? JSON.parse(r.content) : []; renderMessages(); } catch(e){}
+}
+function renderMessages() {
+    const wrap = document.getElementById('messages-list');
+    if (!MESSAGES.length) { wrap.innerHTML = '<p style="padding:16px; color:#888;">Пока пусто.</p>'; return; }
+    const sorted = MESSAGES.slice().sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+    wrap.innerHTML = `
+        <table>
+            <thead><tr><th style="width:150px;">Дата</th><th style="width:110px;">Актуально</th><th>Текст</th><th style="width:230px;">Действия</th></tr></thead>
+            <tbody>${sorted.map(m => `
+                <tr class="msg-row ${m.actual?'actual':''}">
+                    <td>${new Date(m.createdAt).toLocaleString('ru-RU')}</td>
+                    <td>${m.actual ? '<span class="actual-badge">АКТУАЛЬНО</span>' : '—'}</td>
+                    <td>${escapeHtml(m.text)}</td>
+                    <td>
+                        ${m.actual
+                            ? `<button class="btn btn-sm" onclick="setActual('__none__')">Снять</button>`
+                            : `<button class="btn btn-orange btn-sm" onclick="setActual('${m.id}')">Актуально</button>`}
+                        <button class="btn btn-red btn-sm" onclick="deleteMessage('${m.id}')">Удалить</button>
+                    </td>
+                </tr>`).join('')}</tbody>
+        </table>`;
+}
+async function sendMessage() {
+    const text = document.getElementById('msg-text').value.trim();
+    const actual = document.getElementById('msg-actual').checked;
+    if (!text) return toast('Введите текст', 'err');
+    const btn = document.getElementById('msg-send-btn'); btn.disabled = true;
+    try {
+        await api('/api/messages', { method: 'POST', body: JSON.stringify({ text, actual }) });
+        document.getElementById('msg-text').value = '';
+        toast('✅ Отправлено', 'ok'); await loadMessages();
+    } catch(e) { toast('Ошибка: ' + e.message, 'err'); } finally { btn.disabled = false; }
+}
+async function setActual(id) {
+    try { await api('/api/messages/actual', { method: 'POST', body: JSON.stringify({ id }) }); toast('✅ Обновлено', 'ok'); await loadMessages(); }
+    catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+async function deleteMessage(id) {
+    if (!confirm('Удалить сообщение?')) return;
+    try { await api('/api/messages/delete', { method: 'POST', body: JSON.stringify({ id }) }); toast('✅ Удалено', 'ok'); await loadMessages(); }
+    catch(e) { toast('Ошибка: ' + e.message, 'err'); }
+}
+
+// ===== ТАБЫ =====
+function mainTab(id, btn) {
+    document.querySelectorAll('#admin-area > .tabs .tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('#admin-area > .tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('main-' + id).classList.add('active');
+}
+function switchTab(id, btn) {
+    const p = btn.closest('.card');
+    p.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    p.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active'); p.querySelector('#tab-' + id).classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    API_BASE = localStorage.getItem(LS_WORKER) || '';
+    ADMIN_KEY = localStorage.getItem(LS_KEY) || '';
+    document.getElementById('worker-url').value = API_BASE;
+    if (API_BASE && ADMIN_KEY) boot(); else showAuth();
+});
+</script>
+</body>
+</html>
